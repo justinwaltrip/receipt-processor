@@ -1,2 +1,5 @@
 .env
 *.pdf
+credentials.json
+.DS_Store
+config.env

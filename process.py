@@ -14,15 +14,14 @@ nlp = pipeline(
     model="impira/layoutlm-document-qa",
 )
 
-# # zero-shot image classification pipeline
-# model_name = "openai/clip-vit-large-patch14-336"
-# classifier = pipeline("zero-shot-image-classification", model=model_name)
-classifier = None
+# zero-shot image classification pipeline
+model_name = "openai/clip-vit-large-patch14-336"
+classifier = pipeline("zero-shot-image-classification", model=model_name)
 
 
 def main():
     # find first empty cell in first column of google sheet
-    gc = gspread.service_account()
+    gc = gspread.service_account("credentials.json")
     wks = gc.open_by_key(os.environ["SHEET_ID"]).sheet1
     row = len(wks.col_values(1)) + 1
 
@@ -36,60 +35,25 @@ def main():
 
         # get total amount from receipt
         pred = nlp(receipt_image, "What is the total amount?")
-        total = float(pred["answer"])
+        total = float(pred[0]["answer"])
 
+        # TODO get text from pytesseract instead and use that for zero-shot classification
         # get image class
         classes = ["Grocery", "Restaurant"]
-        scores = classifier(receipt_image, classes)
+        scores = classifier(receipt_image, candidate_labels=classes)
         image_class = scores[0]["label"]
 
         # # write today's date in first column
         today = datetime.date.today().strftime("%m/%d/%Y")
-        # service.spreadsheets().values().update(
-        #     spreadsheetId=os.environ["SHEET_ID"],
-        #     range=f"A{row}",
-        #     valueInputOption="RAW",
-        #     body={"values": [[today]]},
-        # ).execute()
+        wks.update_cell(row, 1, today)
 
-        # # write the total amount in second column
-        # service.spreadsheets().values().update(
-        #     spreadsheetId=os.environ["SHEET_ID"],
-        #     range=f"B{row}",
-        #     valueInputOption="RAW",
-        #     body={"values": [[total]]},
-        # ).execute()
+        # write the total amount in second column
+        wks.update_cell(row, 2, total)
 
-        # # write the image class in third column
-        # service.spreadsheets().values().update(
-        #     spreadsheetId=os.environ["SHEET_ID"],
-        #     range=f"C{row}",
-        #     valueInputOption="RAW",
-        #     body={"values": [[image_class]]},
-        # ).execute()
+        # write the image class in third column
+        wks.update_cell(row, 3, image_class)
 
-        # combine above api calls into one batch request
-        batch_update_values_request_body = {
-            "value_input_option": "RAW",
-            "data": [
-                {
-                    "range": f"A{row}",
-                    "values": [[today]],
-                },
-                {
-                    "range": f"B{row}",
-                    "values": [[total]],
-                },
-                {
-                    "range": f"C{row}",
-                    "values": [[image_class]],
-                },
-            ],
-        }
-        service.spreadsheets().values().batchUpdate(
-            spreadsheetId=os.environ["SHEET_ID"],
-            body=batch_update_values_request_body,
-        ).execute()
+        # move to next row
 
 
 if __name__ == "__main__":

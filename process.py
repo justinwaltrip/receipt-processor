@@ -100,11 +100,18 @@ def main():
         # get total amount from receipt
         word_boxes = list(zip(words, boxes))
         pred = nlp(receipt_image, "What is the total amount?", word_boxes=word_boxes)
-        total = float(pred[0]["answer"])
+        total_str = pred[0]["answer"].replace("$", "").replace(",", "")
+        total = float(total_str)
 
         # get date from receipt
-        pred = nlp(receipt_image, "What is the date?", word_boxes=word_boxes)
-        date = parse(pred[0]["answer"])
+        preds = nlp(receipt_image, "What is the date?", word_boxes=word_boxes, top_k=10)
+        for pred in preds:
+            try:
+                date = parse(pred["answer"])
+            except ValueError:
+                continue
+        if not date:
+            raise ValueError("Could not find date on receipt")
 
         # get receipt class
         text = " ".join(words)
@@ -122,6 +129,8 @@ def main():
     for date, total, image_class in values:
         wks.update(f"A{row}:C{row}", [[date.strftime("%-m/%d/%Y"), total, image_class]])
         row += 1
+
+    # TODO upload to google drive
 
     # delete all pdf files
     for receipt_path in os.listdir(os.getcwd()):

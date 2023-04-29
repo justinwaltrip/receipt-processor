@@ -1,0 +1,5 @@
+#!/bin/zsh
+cd "$(dirname "$0")"
+source .env/bin/activate
+python process.py
+read -p "Press Enter to continue" </dev/tty

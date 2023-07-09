@@ -99,9 +99,15 @@ def main():
 
         # get total amount from receipt
         word_boxes = list(zip(words, boxes))
-        pred = nlp(receipt_image, "What is the total amount?", word_boxes=word_boxes)
-        total_str = pred[0]["answer"].replace("$", "").replace(",", "")
-        total = float(total_str)
+        pred = nlp(receipt_image, "What is the total balance?", word_boxes=word_boxes, top_k=10)
+        for pred in pred:
+            try:
+                total_str = pred["answer"].replace("$", "").replace(",", "")
+                total = float(total_str)
+            except ValueError:
+                continue
+        if not total:
+            raise ValueError("Could not find total on receipt")
 
         # get date from receipt
         preds = nlp(receipt_image, "What is the date?", word_boxes=word_boxes, top_k=10)
